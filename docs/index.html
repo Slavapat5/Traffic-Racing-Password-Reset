@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Traffic Racing Simulator - Reset Password</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #eee;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: #1b1b1b;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.35);
+    }
+
+    h1 {
+      font-size: 22px;
+      margin-top: 0;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    p {
+      color: #cfcfcf;
+      line-height: 1.5;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      margin-top: 10px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      border: 1px solid #444;
+      background: #101010;
+      color: white;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      border: 0;
+      border-radius: 8px;
+      background: #2d7ef7;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-top: 14px;
+      min-height: 24px;
+      white-space: pre-line;
+    }
+
+    .ok { color: #6ee16e; }
+    .err { color: #ff6b6b; }
+    .muted { color: #cccccc; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Reset Password</h1>
+    <p id="infoText">Checking password reset link...</p>
+
+    <div id="formArea" style="display:none;">
+      <input id="password" type="password" placeholder="Enter new password" />
+      <input id="password2" type="password" placeholder="Confirm new password" />
+      <button id="saveBtn">Update Password</button>
+    </div>
+
+    <div id="status" class="status muted"></div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+    const SUPABASE_URL = 'https://trfecuqpkrjobgxrmgwm.supabase.co'
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyZmVjdXFwa3Jqb2JneHJtZ3dtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIwNzc0MjgsImV4cCI6MjA2NzY1MzQyOH0._sByi5zdyPnViPIzTsidac2REfnq5GCC89_zD7TLyEs'
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+    const infoText = document.getElementById('infoText')
+    const formArea = document.getElementById('formArea')
+    const password = document.getElementById('password')
+    const password2 = document.getElementById('password2')
+    const saveBtn = document.getElementById('saveBtn')
+    const status = document.getElementById('status')
+
+    function setStatus(text, cls = 'muted') {
+      status.textContent = text
+      status.className = 'status ' + cls
+    }
+
+    async function init() {
+      const { data: sessionData } = await supabase.auth.getSession()
+
+      if (sessionData.session) {
+        infoText.textContent = 'Enter your new password below.'
+        formArea.style.display = 'block'
+        setStatus('')
+      } else {
+        infoText.textContent = 'Open this page from your password reset email.'
+        setStatus('No valid recovery session was found.', 'err')
+      }
+    }
+
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || session) {
+        infoText.textContent = 'Enter your new password below.'
+        formArea.style.display = 'block'
+        setStatus('')
+      }
+    })
+
+    saveBtn.addEventListener('click', async () => {
+      const pw1 = password.value.trim()
+      const pw2 = password2.value.trim()
+
+      if (pw1.length < 8) {
+        setStatus('Password must be at least 8 characters.', 'err')
+        return
+      }
+
+      if (pw1 !== pw2) {
+        setStatus('Passwords do not match.', 'err')
+        return
+      }
+
+      saveBtn.disabled = true
+      setStatus('Updating password...', 'muted')
+
+      const { error } = await supabase.auth.updateUser({ password: pw1 })
+
+      if (error) {
+        setStatus('Could not update password:\n' + error.message, 'err')
+      } else {
+        setStatus('Password updated successfully.\nYou can now return to the game and log in.', 'ok')
+        infoText.textContent = 'Password reset complete.'
+        formArea.style.display = 'none'
+      }
+
+      saveBtn.disabled = false
+    })
+
+    init()
+  </script>
+</body>
+</html>
